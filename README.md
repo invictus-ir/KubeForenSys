@@ -1,11 +1,10 @@
-# RP2 - Kubernetes Data Collection Tool
+# KubeForenSys - Kubernetes Data Collection Tool
 
 A tool for collecting Kubernetes cluster data and ingesting it into Azure Log Analytics workspace for analysis post-compromise.
 
 ## What it does
 
-
-KubeForenSys is a Python-based tool that automatically collects various types of data from Kubernetes clusters and sends it to Azure Log Analytics workspace. It specifically focusses on collecting data from Azure Kubernetes Service clusters to 
+KubeForenSys is a Python-based tool that automatically collects various types of data from Kubernetes clusters and sends it to Azure Log Analytics workspace. It specifically focusses on collecting data from Azure Kubernetes Service clusters.
 
 ### Features
 
@@ -116,8 +115,7 @@ The tool automatically creates:
 
 - The tool skips system namespaces (`kube-system`, `azure-arc`, `gatekeeper-system`)
 - Uses Azure DefaultAzureCredential for authentication
-- Supports network access controls for the data collection endpoint
-- Data is retained for 30 days by default
+- Data is retained for 30 days by default. This can be altered through the Azure portal where necessary.
 
 ## Troubleshooting
 
@@ -128,7 +126,7 @@ The tool automatically creates:
 
 ## Dependencies
 
-- `kubernetes==33.1.0`: Kubernetes Python client
+- `kubernetes`: Kubernetes Python client
 - `python-dotenv`: Environment variable management
 - `azure.identity`: Azure authentication
 - `azure.monitor.ingestion`: Azure Monitor data ingestion
