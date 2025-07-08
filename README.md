@@ -20,7 +20,7 @@ KubeForenSys is a Python-based tool that automatically collects various types of
 
 ## Prerequisites
 
-- Python 3.6 or higher
+- Python 3.8 or higher
 - `kubectl` configured and authenticated to your Kubernetes cluster
 - Azure CLI installed and authenticated
 - Azure subscription with appropriate permissions
