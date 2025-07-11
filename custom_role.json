@@ -1,0 +1,27 @@
+{
+  "Name": "<name>",
+  "IsCustom": true,
+  "Description": "<description>",
+  "permissions": [
+      {
+    "actions": [
+        "Microsoft.OperationalInsights/workspaces/write",
+        "Microsoft.OperationalInsights/workspaces/tables/write",
+        "Microsoft.Insights/dataCollectionEndpoints/write",
+        "Microsoft.Insights/dataCollectionRules/write",
+        "Microsoft.Insights/dataCollectionRules/read",
+        "Microsoft.OperationalInsights/workspaces/sharedKeys/action",
+        "Microsoft.ContainerService/managedClusters/read"
+    ],
+    "notActions": [],
+    "dataActions": [
+        "Microsoft.Insights/Metrics/Write",
+        "Microsoft.Insights/Telemetry/Write"
+    ],
+    "notDataActions": []
+    }
+  ],
+  "assignableScopes": [
+    "/subscriptions/<subscription-id>/resourceGroups/<RP>"
+  ]
+}
