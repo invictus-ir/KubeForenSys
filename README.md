@@ -22,7 +22,6 @@ KubeForenSys is a Python-based tool that automatically collects various types of
 
 - Python 3.8 or higher
 - `kubectl` configured and authenticated to your Kubernetes cluster
-- Azure CLI installed and authenticated
 - Azure subscription with appropriate permissions
 
 ## Installation
@@ -37,14 +36,8 @@ KubeForenSys is a Python-based tool that automatically collects various types of
    ```bash
    pip install -r requirements.txt
    ```
-3. **Install Kubectl**:
 
-   ```bash
-   curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
-   sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-   ```
-
-4. **Set up environment variables**:
+3. **Set up environment variables**:
    
    Create a `.env` file in the project root:
    ```bash
@@ -116,10 +109,9 @@ The tool automatically creates:
 
 ## Troubleshooting
 
-1. **Authentication Issues**: Ensure Azure CLI is authenticated and has appropriate permissions
-2. **Kubernetes Access**: Verify `kubectl` is configured and can access the cluster
-3. **Resource Creation**: Check that your Azure subscription has permissions to create Log Analytics resources
-4. **Network Access**: Ensure the data collection endpoint has proper network access configured
+1. **Kubernetes Access**: Verify `kubectl` is configured and can access the cluster
+2. **Resource Creation**: Check that your Azure subscription has permissions to create Log Analytics resources (see custom_role.json)
+3. **Network Access**: Ensure the data collection endpoint has proper network access configured
 
 ## Dependencies
 
