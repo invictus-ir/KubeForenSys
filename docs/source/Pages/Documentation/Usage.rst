@@ -15,7 +15,7 @@ After installing KubeForenSys, run the kubeforensys script using Python:
 This runs the code with default settings.
 
 Supplying arguments
------------
+--------------------
 
 KubeForenSys supports user-supplied CLI arguments to override settings:
 
