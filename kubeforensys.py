@@ -1,9 +1,10 @@
-from kube_logs import KubeLogFetcher
-from azure_connector import AzureConnector
-from aks_addon_status import AksAddonLister
+from src.collector.k8s_data_collector import KubeLogFetcher
+from src.platform.azure.upload.azure_connector import AzureConnector
+from src.platform.azure.collect.aks_addon_status import AksAddonLister
+from src.platform.azure.create.create_env import AzureLogPipelineProvisioner
+from src.utils.load_config import parse_args
+
 from dotenv import load_dotenv
-from create_env import AzureLogPipelineProvisioner
-from load_config import parse_args
 import os
 
 def main():
@@ -25,7 +26,7 @@ def main():
         subscription_id=subscription_id,
         resource_group=resource_group,
         location=user_settings.get("location", "westeurope"),
-        workspace_name=user_settings.get("workspace_name", "RP2-LAW"),
+        workspace_name=user_settings.get("workspace_name", "KubeForenSys-LAW"),
         dce_name=user_settings.get("dce_name", "Kube-DCE"),
     )
 

@@ -4,8 +4,7 @@ from pathlib import Path
 import os
 import subprocess
 from datetime import datetime
-
-import tempfile
+import tempfile 
 
 class KubeLogFetcher:
     def __init__(self, user_settings):
