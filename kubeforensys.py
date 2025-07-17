@@ -6,6 +6,8 @@ from src.utils.load_config import parse_args
 
 from dotenv import load_dotenv
 import os
+import logging
+import logging.config
 
 def main():
 
@@ -13,10 +15,16 @@ def main():
 
     load_dotenv()
 
+    logging.config.fileConfig('logger.conf', disable_existing_loggers=False)
+    logger = logging.getLogger("appLogger")
+    logging.getLogger("azure").setLevel(logging.WARNING)
+
     required_env_vars = ["SUBSCRIPTION_ID", "RESOUCE_GROUP_NAME", "CLUSTER_NAME"]
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
     if missing_vars:
-        raise ValueError(f"Missing required environment variables: {missing_vars}")
+        msg = f"Missing required environment variables: {missing_vars}"
+        logger.error(msg)
+        raise ValueError(msg)
 
     subscription_id = os.getenv("SUBSCRIPTION_ID")
     resource_group = os.getenv("RESOUCE_GROUP_NAME")
@@ -45,9 +53,9 @@ def main():
     fetcher = KubeLogFetcher(user_settings)
 
     data_sources = {
-        "kubelogs_CL": fetcher.get_all_logs,
+        "kubelogs_CL": fetcher.retrieve_logs_from_pods,
         "kubeevents_CL": fetcher.retrieve_events,
-        "commandhistory_CL": fetcher.get_command_history,
+        "commandhistory_CL": fetcher.retrieve_command_history,
         "serviceaccounts_CL": fetcher.get_service_accounts,
         "suspiciouspods_CL": fetcher.get_suspicious_pods,
         "rbacbindings_CL": fetcher.get_rbac_bindings,
@@ -60,11 +68,10 @@ def main():
             continue  # Skip if monitoring is enabled
  
         connector.upload_in_batches(
-            body=fetch_function(),
+            generator_function=fetch_function,
             stream_name=f"Custom-{table_name}",
             dcr_stream_id=dcr_mappings[table_name]["dcr_id"]
         )
-
 
 if __name__ == "__main__":
     main()

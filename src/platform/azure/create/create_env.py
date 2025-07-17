@@ -1,9 +1,12 @@
 import requests
 import json
 import time
+import logging
 
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.loganalytics import LogAnalyticsManagementClient
+
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 class AzureLogPipelineProvisioner:
     TABLE_API_VERSION = "2025-02-01"
@@ -16,6 +19,7 @@ class AzureLogPipelineProvisioner:
         self.location = location
         self.workspace_name = workspace_name
         self.dce_name = dce_name
+        self.logger = logging.getLogger("appLogger")
 
         self.credential = DefaultAzureCredential()
         self.token = self.credential.get_token("https://management.azure.com/.default").token
@@ -26,9 +30,9 @@ class AzureLogPipelineProvisioner:
 
         self.log_analytics_client = LogAnalyticsManagementClient(self.credential, self.subscription_id)
 
-
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def create_workspace(self):
-        print("Creating Log Analytics workspace...")
+        self.logger.info("Creating Log Analytics workspace...")
         workspace_async = self.log_analytics_client.workspaces.begin_create_or_update(
             self.resource_group,
             self.workspace_name,
@@ -41,11 +45,12 @@ class AzureLogPipelineProvisioner:
         workspace = workspace_async.result()
         self.workspace_id = workspace.customer_id
         self.workspace_resource_id = workspace.id
-        print(f"Workspace ID: {self.workspace_id}")
-        print(f"Workspace Resource ID: {self.workspace_resource_id}")
+        self.logger.info(f"Workspace ID: {self.workspace_id}")
+        self.logger.info(f"Workspace Resource ID: {self.workspace_resource_id}")
 
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def create_custom_table(self, table_name, table_columns):
-        print(f"Creating custom table '{table_name}'...")
+        self.logger.info(f"Creating custom table '{table_name}'...")
         url = f"https://management.azure.com{self.workspace_resource_id}/tables/{table_name}?api-version={self.TABLE_API_VERSION}"
 
         payload = {
@@ -60,10 +65,11 @@ class AzureLogPipelineProvisioner:
 
         resp = requests.put(url, headers=self.headers, data=json.dumps(payload))
         resp.raise_for_status()
-        print("[+] Custom table created successfully.")
+        self.logger.info("[+] Custom table created successfully.")
 
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def create_dce(self):
-        print("Creating DCE...")
+        self.logger.info("Creating DCE...")
         url = f"https://management.azure.com/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group}/providers/Microsoft.Insights/dataCollectionEndpoints/{self.dce_name}?api-version={self.DCE_API_VERSION}"
         payload = {
             "location": self.location,
@@ -77,10 +83,11 @@ class AzureLogPipelineProvisioner:
         resp.raise_for_status()
         self.dce_id = resp.json()["id"]
         self.dce_endpoint = resp.json()["properties"]["logsIngestion"]["endpoint"]
-        print(f"DCE ID: {self.dce_id}")
+        self.logger.info(f"DCE ID: {self.dce_id}")
 
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(2))
     def create_dcr(self, table):
-        print("Creating DCR...")
+        self.logger.info("Creating DCR...")
         dcr_name = f"{table["name"]}-dcr"
         custom_stream_name = f"Custom-{table["name"]}"
         dcr_url = f"https://management.azure.com/subscriptions/{self.subscription_id}/resourceGroups/{self.resource_group}/providers/Microsoft.Insights/dataCollectionRules/{dcr_name}?api-version={self.DCR_API_VERSION}"
@@ -130,7 +137,7 @@ class AzureLogPipelineProvisioner:
     def run(self):
 
         self.create_workspace()
-        print("Provisioning LAW for 30s")
+        self.logger.info("Provisioning LAW for 30s")
         time.sleep(30)
         self.create_dce()
 
@@ -240,7 +247,7 @@ class AzureLogPipelineProvisioner:
             self.create_custom_table(table_name=table["name"], table_columns=table["columns"])
         
         # Give Azure a moment to fully create the new table, will otherwise error out when creating the DCR
-        print("Creating tables, give it a moment... (30s)")
+        self.logger.info("Creating tables, give it a moment... (30s)")
         time.sleep(30)
 
         # Create DCRs
@@ -255,6 +262,6 @@ class AzureLogPipelineProvisioner:
                 "dcr_stream_name": f"Custom-{table_name}"
             }
 
-        print("\n[+] All resources created successfully.")
+        self.logger.info("[+] All resources created successfully.")
         return result
     
