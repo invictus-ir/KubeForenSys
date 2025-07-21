@@ -1,6 +1,17 @@
+![alt text](docs/source/Images/Invictus-Incident-Response.jpg "Invictus Incident Response")
+![Language](https://img.shields.io/badge/Language-Python-green)
+[![Documentation](https://img.shields.io/badge/Read%20the%20Docs-Documentation-blue)](https://kubeforensys.readthedocs.io/en/latest/)
+![GitHub stars](https://img.shields.io/github/stars/invictus-ir/KubeForenSys?style=social)
+![Contributors](https://img.shields.io/github/contributors/invictus-ir/KubeForenSys)
+![Maintenance](https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen)
+
 # KubeForenSys - Kubernetes Data Collection Tool
 
 A tool for collecting Kubernetes cluster data and ingesting it into Azure Log Analytics workspace for analysis post-compromise.
+
+## Documentation
+
+Documentation is available at the [KubeForenSys documentation](https://kubeforensys.readthedocs.io/en/latest/).
 
 ## What it does
 
