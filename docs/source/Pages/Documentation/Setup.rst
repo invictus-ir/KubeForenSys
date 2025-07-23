@@ -16,6 +16,9 @@ KubeForenSys uses the Kubernetes client, which is initialized through:
             self.batch_v1 = client.BatchV1Api()
             self.networking_v1 = client.NetworkingV1Api()
 
+KubeConfig file
+----------------
+
 Dependant on the platform you are running it on, it loads a `kubeconfig <https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/>`_ file.
 This file can be generated dependant on which cloud provider the cluster lives:
 
@@ -28,12 +31,15 @@ Using the Azure CLI:
 
 Using Azure Powershell:
 
-.. code-block:: bash
+.. code-block:: powershell
 
   Connect-AzAccount
   Import-AzAksCredential -ResourceGroupName $RESOURCE_GROUP_NAME -Name $AKS_NAME
 
 Furthermore, appropriate permissions are required, see :doc:`Permissions`.
+
+Cloning the repository
+--------------------------
 
 Now, setup a virtual environment (not mandatory but recommended) and clone the Git repository:
 
@@ -47,7 +53,8 @@ Install the required dependencies:
   
   pip install -r requirements.txt
 
-Set up environment variables:
+Environment variables
+------------------------
 
 Create a .env file in the project root:
 
@@ -55,7 +62,7 @@ Create a .env file in the project root:
    
    SUBSCRIPTION_ID="your-azure-subscription-id"
    CLUSTER_NAME="your-aks-cluster-name"
-   RESOUCE_GROUP_NAME="your-resource-group-name"
+   RESOURCE_GROUP_NAME="your-resource-group-name"
 
 Or set them as environment variables:
 
@@ -63,10 +70,17 @@ Or set them as environment variables:
 
   export SUBSCRIPTION_ID="your-azure-subscription-id"
   export CLUSTER_NAME="your-aks-cluster-name"
-  export RESOUCE_GROUP_NAME="your-resource-group-name"
+  export RESOURCE_GROUP_NAME="your-resource-group-name"
 
 And you're good to go!
 
 .. code-block:: bash
   
   python3 kubeforensys.py
+
+
+Clean up
+----------------------------
+
+KubeForenSys does not yet support deletion of all newly created infrastrucutre. Thus, the Azure portal should be utilized to delete the resources. To do this, go to
+the resouce group defined in the environment variable and delete objects there.

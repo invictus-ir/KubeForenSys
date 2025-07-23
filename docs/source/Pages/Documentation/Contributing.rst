@@ -1,4 +1,4 @@
 Contributing
 ============
 
-If any features are missing, feel free to open a issue or implement the feature yourself and open a pull request at `GitHub <https://github.com/invictus-ir/KubeForenSys>`_.
+If you notice any missing features, feel free to open an issue or implement the feature yourself and submit a pull request on `GitHub <https://github.com/invictus-ir/KubeForenSys>`_.

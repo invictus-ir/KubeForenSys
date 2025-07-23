@@ -10,7 +10,13 @@ import logging
 
 class KubeLogFetcher:
     def __init__(self, user_settings):
-        config.load_kube_config()
+        self.logger = logging.getLogger("kubeLogger")
+        try:
+            config.load_kube_config()
+            self.logger.info("Loaded kubeconfig successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to load kubeconfig: {e}")
+            raise
         self.v1 = client.CoreV1Api()
         self.since_seconds = user_settings.get("since_seconds", 86400)
         self.namespaces_to_skip = ["kube-system", "azure-arc", "gatekeeper-system"]
@@ -18,7 +24,6 @@ class KubeLogFetcher:
         self.rbac_v1 = client.RbacAuthorizationV1Api()
         self.batch_v1 = client.BatchV1Api()
         self.networking_v1 = client.NetworkingV1Api()
-        self.logger = logging.getLogger("appLogger")
     
     def is_pod_valid(self, pod):
         return pod.status.phase != "Succeeded" and pod.metadata.namespace not in self.namespaces_to_skip
@@ -35,7 +40,7 @@ class KubeLogFetcher:
                 else:
                     break
         except ApiException as e:
-            self(f"Error fetching pods: {e}")
+            self.logger.error(f"Error fetching pods: {e}")
 
     def retrieve_logs_from_pods(self):
         for pod in self.get_pods_stream():

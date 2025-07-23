@@ -54,14 +54,14 @@ KubeForenSys is a Python-based tool that automatically collects various types of
    ```bash
    SUBSCRIPTION_ID="your-azure-subscription-id"
    CLUSTER_NAME="your-aks-cluster-name"
-   RESOUCE_GROUP_NAME="your-resource-group-name"
+   RESOURCE_GROUP_NAME="your-resource-group-name"
    ```
    
    Or set them as environment variables:
    ```bash
    export SUBSCRIPTION_ID="your-azure-subscription-id"
    export CLUSTER_NAME="your-aks-cluster-name"
-   export RESOUCE_GROUP_NAME="your-resource-group-name"
+   export RESOURCE_GROUP_NAME="your-resource-group-name"
    ```
 
 ## Usage

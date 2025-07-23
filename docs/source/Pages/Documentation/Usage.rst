@@ -1,7 +1,7 @@
 Usage
 =====
 
-This guide walks through how to use **KubeForenSys** after installation.
+This guide walks through how to use **KubeForenSys** after installation. See :doc:`Features` for how it works.
 
 Basic Usage
 -----------
@@ -10,7 +10,7 @@ After installing KubeForenSys, run the kubeforensys script using Python:
 
 .. code-block:: bash
 
-   python kubeforensys.py
+   python3 kubeforensys.py
 
 This runs the code with default settings.
 
@@ -36,6 +36,12 @@ KubeForenSys supports user-supplied CLI arguments to override settings:
      --workspace_name      Name of the Log Analytics workspace (default: 'Kube-LAW')
      --dce_name            Name of the Data Collection Endpoint (default: 'Kube-DCE')
      --location            Azure region (default: 'west-europe')
+
+For instance, to set the workspace name to `myCustomWorkspace` and since_seconds to 3600, it would be passed as a parameter to KubeForenSys:
+
+.. code-block:: bash
+
+   python3 kubeforensys.py --workspace_name myCustomWorkspace --since_seconds 3600
 
 Investigating within Azure
 ---------------------------

@@ -19,7 +19,7 @@ def main():
     logger = logging.getLogger("appLogger")
     logging.getLogger("azure").setLevel(logging.WARNING)
 
-    required_env_vars = ["SUBSCRIPTION_ID", "RESOUCE_GROUP_NAME", "CLUSTER_NAME"]
+    required_env_vars = ["SUBSCRIPTION_ID", "RESOURCE_GROUP_NAME", "CLUSTER_NAME"]
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
     if missing_vars:
         msg = f"Missing required environment variables: {missing_vars}"
@@ -27,7 +27,7 @@ def main():
         raise ValueError(msg)
 
     subscription_id = os.getenv("SUBSCRIPTION_ID")
-    resource_group = os.getenv("RESOUCE_GROUP_NAME")
+    resource_group = os.getenv("RESOURCE_GROUP_NAME")
     cluster_name = os.getenv("CLUSTER_NAME")
 
     provisioner = AzureLogPipelineProvisioner(

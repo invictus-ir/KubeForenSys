@@ -1,36 +1,20 @@
-.. image:: /Images/Invictus-Incident-Response.jpg
-   :width: 70%
-   :alt: Invictus logo
+==============
+How it works
+==============
 
-KubeForenSys documentation
-==========================
+The features of KubeForenSys can be divided in three different parts, which are:
 
+* Data collection
+* Infrastructure creation
+* Upload of collected data
 
-Welcome to the KubeForenSys documentation, created by Invictus Incident Response. KubeForenSys is a tool developed to address the challenge of fragmented data sources in
-Kubernetes-based cloud environments. It leverages the Kubernetes API, as exposed by the API server in the control plane, to fetch logs and capture the current state of the cluster.
-It can also create the necessary infrastructure for log ingestion, such as Data Collection Endpoints and Data Collection Rules in Azure.
-The mentioned data is then pushed to a Log Analytics workspace, where KQL can be used to search the data and gain insight into a potential compromise. KubeForenSys is intended to operate on a best-effort basis, meaning that it can only capture data that is still available.
-For example, if a container is stopped and destroyed before logs are collected, that data is lost. Ideally, tools like Container Insights in
-AKS are used to continuously capture logs and provide broader visibility. However, KubeForenSys complements these tools by contributing additional data, such as active cron jobs.
+Collection
+=============
 
-See KubeForenSys in action:
+The `Kubernetes API <https://kubernetes.io/docs/concepts/overview/kubernetes-api/>`_ is used to fetch the current state of the cluster. The Kubernetes Python library is
+leveraged to fetch this information. To complement this, platform-specific data is retrieved, such as what addons are currently installed. 
 
-.. figure:: /Images/resource-creation.png
-   :width: 80%
-   :alt: Fetching data
-
-   Creation of the required infrastructure in Azure
-
-.. figure:: /Images/getting-data.png
-   :width: 50%
-   :alt: Resources created
-
-   Pushing Kubernetes logs and cluster data to the Azure infrastructure
-
-Fetched data
---------------
-
-Currently, the following data is supported:
+The following data is currently retrieved from the Kubernetes cluster:
 
 ===================================== =========================================================================================================================================================================== 
 Source                                Description                                                                                                                                                                
@@ -45,23 +29,29 @@ Cronjobs                              Get the currently active cronjobs existing
 Network Policies                      Get Network Policies active in the cluster.                                                                                                                                                                                                       
 ===================================== =========================================================================================================================================================================== 
 
-Also see :doc:`Pages/Documentation/Features` to learn more about how it works and why or :doc:`Pages/Documentation/Setup` to view how to install the tool.
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Documentation
+Infrastructure creation
+==========================
 
-   Pages/Documentation/Features
-   Pages/Documentation/Setup
-   Pages/Documentation/Permissions
-   Pages/Documentation/Usage
-   Pages/Documentation/Contributing
-   Pages/Documentation/License
+Azure
+-----------
 
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Project
+To achieve infrastructure creation in Azure from within the script, the `Logs Ingestion API <https://learn.microsoft.com/en-us/azure/azure-monitor/logs/logs-ingestion-api-overview>`_ is used.
+In order to push custom data to the Log Analytics workspace, custom tables are to be created. This way, we can control what data is stored. The tables are exposed through a DCE, which is the actual endpoint where
+we are sending data to. At last, Data Collection Rules exist which are able to transform data from being ingested at the endpoint to being actually stored. Thus, data sent to the endpoint does not necessarly have to comply to data expected within the tables, the transformer can format this appropriatly.
 
-   Pages/Project/Aboutus
+Infrastructure is created in the following order:
+
+1. Creation of the Log Analytics workspace
+2. Creation of the DCE
+3. Create a custom table for each data source as defined. 
+4. Create a DCR for each table which is created
+
+Upload data
+=============
+
+Azure
+-----------
+
+To upload data to the DCE, the LogsIngestionClient is used. If no transformer is specified within the DCR, the data sent has to match the format expected by the custom tables.
+The DCR will also include an endpoint, which data can be sent too if the "kind": "Direct" property is set within the DCR creation. However, as a DCE is also required when using a private link, we opted to also create a DCE.
