@@ -22,6 +22,6 @@
     }
   ],
   "assignableScopes": [
-    "/subscriptions/<subscription-id>/resourceGroups/<RP>"
+    "/subscriptions/<subscription-id>/resourceGroups/<resource-group>"
   ]
 }
