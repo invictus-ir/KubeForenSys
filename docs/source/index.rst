@@ -22,7 +22,7 @@ See KubeForenSys in action:
    Creation of the required infrastructure in Azure
 
 .. figure:: /Images/getting-data.png
-   :width: 50%
+   :width: 80%
    :alt: Resources created
 
    Pushing Kubernetes logs and cluster data to the Azure infrastructure
