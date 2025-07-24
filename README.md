@@ -70,14 +70,14 @@ KubeForenSys is a Python-based tool that automatically collects various types of
 
 Run the tool with default settings:
 ```bash
-python main.py
+python3 kubeforensys.py
 ```
 
 ### Advanced Usage
 
 Customize the data collection with command-line arguments:
 ```bash
-python main.py \
+python3 kubeforensys.py \
   --since_seconds 172800 \
   --workspace_name "MyKubeWorkspace" \
   --dce_name "MyDataCollectionEndpoint" \
@@ -87,7 +87,7 @@ python main.py \
 ### Command Line Options
 
 - `--since_seconds`: Fetch logs since these many seconds ago (default: 86400 = 24 hours)
-- `--workspace_name`: Name of the Log Analytics workspace (default: "Kube-LAW")
+- `--workspace_name`: Name of the Log Analytics workspace (default: "KubeForenSys-LAW")
 - `--dce_name`: Name of the Data Collection Endpoint (default: "Kube-DCE")
 - `--location`: Azure region (default: "westeurope")
 
