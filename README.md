@@ -1,6 +1,17 @@
+![alt text](docs/source/Images/Invictus-Incident-Response.jpg "Invictus Incident Response")
+![Language](https://img.shields.io/badge/Language-Python-green)
+[![Documentation](https://img.shields.io/badge/Read%20the%20Docs-Documentation-blue)](https://kubeforensys.readthedocs.io/en/latest/)
+![GitHub stars](https://img.shields.io/github/stars/invictus-ir/KubeForenSys?style=social)
+![Contributors](https://img.shields.io/github/contributors/invictus-ir/KubeForenSys)
+![Maintenance](https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen)
+
 # KubeForenSys - Kubernetes Data Collection Tool
 
 A tool for collecting Kubernetes cluster data and ingesting it into Azure Log Analytics workspace for analysis post-compromise.
+
+## Documentation
+
+Documentation is available at the [KubeForenSys documentation](https://kubeforensys.readthedocs.io/en/latest/).
 
 ## What it does
 
@@ -22,7 +33,6 @@ KubeForenSys is a Python-based tool that automatically collects various types of
 
 - Python 3.8 or higher
 - `kubectl` configured and authenticated to your Kubernetes cluster
-- Azure CLI installed and authenticated
 - Azure subscription with appropriate permissions
 
 ## Installation
@@ -37,27 +47,21 @@ KubeForenSys is a Python-based tool that automatically collects various types of
    ```bash
    pip install -r requirements.txt
    ```
-3. **Install Kubectl**:
 
-   ```bash
-   curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
-   sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-   ```
-
-4. **Set up environment variables**:
+3. **Set up environment variables**:
    
    Create a `.env` file in the project root:
    ```bash
    SUBSCRIPTION_ID="your-azure-subscription-id"
    CLUSTER_NAME="your-aks-cluster-name"
-   RESOUCE_GROUP_NAME="your-resource-group-name"
+   RESOURCE_GROUP_NAME="your-resource-group-name"
    ```
    
    Or set them as environment variables:
    ```bash
    export SUBSCRIPTION_ID="your-azure-subscription-id"
    export CLUSTER_NAME="your-aks-cluster-name"
-   export RESOUCE_GROUP_NAME="your-resource-group-name"
+   export RESOURCE_GROUP_NAME="your-resource-group-name"
    ```
 
 ## Usage
@@ -66,14 +70,14 @@ KubeForenSys is a Python-based tool that automatically collects various types of
 
 Run the tool with default settings:
 ```bash
-python main.py
+python3 kubeforensys.py
 ```
 
 ### Advanced Usage
 
 Customize the data collection with command-line arguments:
 ```bash
-python main.py \
+python3 kubeforensys.py \
   --since_seconds 172800 \
   --workspace_name "MyKubeWorkspace" \
   --dce_name "MyDataCollectionEndpoint" \
@@ -83,7 +87,7 @@ python main.py \
 ### Command Line Options
 
 - `--since_seconds`: Fetch logs since these many seconds ago (default: 86400 = 24 hours)
-- `--workspace_name`: Name of the Log Analytics workspace (default: "Kube-LAW")
+- `--workspace_name`: Name of the Log Analytics workspace (default: "KubeForenSys-LAW")
 - `--dce_name`: Name of the Data Collection Endpoint (default: "Kube-DCE")
 - `--location`: Azure region (default: "westeurope")
 
@@ -116,10 +120,9 @@ The tool automatically creates:
 
 ## Troubleshooting
 
-1. **Authentication Issues**: Ensure Azure CLI is authenticated and has appropriate permissions
-2. **Kubernetes Access**: Verify `kubectl` is configured and can access the cluster
-3. **Resource Creation**: Check that your Azure subscription has permissions to create Log Analytics resources
-4. **Network Access**: Ensure the data collection endpoint has proper network access configured
+1. **Kubernetes Access**: Verify `kubectl` is configured and can access the cluster
+2. **Resource Creation**: Check that your Azure subscription has permissions to create Log Analytics resources (see custom_role.json)
+3. **Network Access**: Ensure the data collection endpoint has proper network access configured
 
 ## Dependencies
 
