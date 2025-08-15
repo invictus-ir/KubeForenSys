@@ -4,3 +4,4 @@ azure.identity
 azure.monitor.ingestion
 azure.mgmt.containerservice
 azure.mgmt.loganalytics
+tenacity

@@ -4,104 +4,106 @@ from pathlib import Path
 import os
 import subprocess
 from datetime import datetime
+import tempfile 
 
-import tempfile
+import logging
 
 class KubeLogFetcher:
     def __init__(self, user_settings):
-        config.load_kube_config()
+        self.logger = logging.getLogger("kubeLogger")
+        try:
+            config.load_kube_config()
+            self.logger.info("Loaded kubeconfig successfully.")
+        except Exception as e:
+            self.logger.error(f"Failed to load kubeconfig: {e}")
+            raise
         self.v1 = client.CoreV1Api()
-        self.chunk_size = user_settings.get("chunk_size", 500)
         self.since_seconds = user_settings.get("since_seconds", 86400)
         self.namespaces_to_skip = ["kube-system", "azure-arc", "gatekeeper-system"]
-        self.pods = self.get_all_pods()
+        self.pod_batch_size = 500
         self.rbac_v1 = client.RbacAuthorizationV1Api()
         self.batch_v1 = client.BatchV1Api()
         self.networking_v1 = client.NetworkingV1Api()
     
-    def get_all_pods(self):
-        # Exclude pods which are succeeded (e.g. as created by a cronjob), otherwise retrieving will fail
-        return [pod for pod in self.v1.list_pod_for_all_namespaces(watch=False).items
-            if pod.status.phase != "Succeeded"
-            and pod.metadata.namespace not in self.namespaces_to_skip
-        ]
+    def is_pod_valid(self, pod):
+        return pod.status.phase != "Succeeded" and pod.metadata.namespace not in self.namespaces_to_skip
     
-    def get_all_logs(self):
-        logs = []
-        for pod in self.pods:
-            self.retrieve_logs_from_pod(pod, logs)
-        return logs
-    
-    def get_command_history(self):
-        collected_commands = []
-        for pod in self.pods:
-            self.retrieve_history_from_pod(pod, collected_commands)
-        return collected_commands
-    
-    def retrieve_logs_from_pod(self, pod, logs):
+    def get_pods_stream(self):
         try:
-            if not pod.status.container_statuses:
-                print("No container status")
-                return
-
-            for container_status in pod.status.container_statuses:
-                container_name = container_status.name
-
-                # Determine if we should collect previous logs based on whether the container restarted
-                log_modes = [("current", False)]
-                if container_status.restart_count > 0:
-                    print("Running with Previous true")
-                    log_modes.insert(0, ("previous", True))
-
-                for label, is_previous in log_modes:
-                    print(f"\nFetching {label} logs for container: {container_name}")
-
-                    try:
-                        log_response = self.v1.read_namespaced_pod_log(
-                            name=pod.metadata.name,
-                            namespace=pod.metadata.namespace,
-                            container=container_name,
-                            timestamps=True,
-                            previous=is_previous,
-                            since_seconds=self.since_seconds,
-                            _preload_content=False
-                        )
-
-                        if not log_response:
-                            continue  # skip empty logs
-
-                        for line in log_response.readlines():
-                            line = line.decode('utf-8')
-                            timestamp, message = line.split(" ", maxsplit=1)
-                            logs.append({
-                                "TimeGenerated": timestamp,
-                                "message": message,
-                                "container_name": container_name,
-                                "namespace": pod.metadata.namespace,
-                                "pod_name": pod.metadata.name,
-                                "images": [c.image for c in pod.spec.containers],
-                                "labels": pod.metadata.labels,
-                                "annotations": pod.metadata.annotations,
-                            })
-
-                    except ApiException as e:
-                        print(f"Could not get {label} logs for {container_name}: {e}")
-
+            pods = self.v1.list_pod_for_all_namespaces(limit=self.pod_batch_size)
+            while True:
+                for pod in pods.items:
+                    if self.is_pod_valid(pod):
+                        yield pod
+                if pods.metadata._continue:
+                    pods = self.v1.list_pod_for_all_namespaces(limit=self.pod_batch_size, _continue=pods.metadata._continue)
+                else:
+                    break
         except ApiException as e:
-            print(f"Error accessing pod '{pod.metadata.name}': {e}")
+            self.logger.error(f"Error fetching pods: {e}")
 
-        return
+    def retrieve_logs_from_pods(self):
+        for pod in self.get_pods_stream():
+            try:
+                if not pod.status.container_statuses:
+                    self.logger.info("No container status")
+                    continue
+
+                for container_status in pod.status.container_statuses:
+                    container_name = container_status.name
+
+                    # Determine if we should collect previous logs based on whether the container restarted
+                    log_modes = [("current", False)]
+                    if container_status.restart_count > 0:
+                        self.logger.info("Running with Previous true")
+                        log_modes.insert(0, ("previous", True))
+
+                    for label, is_previous in log_modes:
+                        self.logger.info(f"Fetching {label} logs for container: {container_name}")
+
+                        try:
+                            log_response = self.v1.read_namespaced_pod_log(
+                                name=pod.metadata.name,
+                                namespace=pod.metadata.namespace,
+                                container=container_name,
+                                timestamps=True,
+                                previous=is_previous,
+                                since_seconds=self.since_seconds,
+                                _preload_content=False
+                            )
+
+                            if not log_response:
+                                continue  # skip empty logs
+
+                            for raw_line in log_response:
+                                line = raw_line.decode("utf-8")
+                                timestamp, message = line.split(" ", maxsplit=1)
+                                yield {
+                                    "TimeGenerated": timestamp,
+                                    "message": message,
+                                    "container_name": container_name,
+                                    "namespace": pod.metadata.namespace,
+                                    "pod_name": pod.metadata.name,
+                                    "images": [c.image for c in pod.spec.containers],
+                                    "labels": pod.metadata.labels,
+                                    "annotations": pod.metadata.annotations,
+                                }
+
+                        except ApiException as e:
+                            self.logger.error(f"Could not get {label} logs for {container_name}: {e}")
+
+            except ApiException as e:
+                self.logger.error(f"Error accessing pod '{pod.metadata.name}': {e}")
     
     def format_timestamp(self, timestamp):
         # Format from datetime object to plain string, since a datetime is not serializable
         return str(timestamp) if timestamp else ""
 
     def retrieve_events(self):
-        print(f"\nFetching events for all namespaces")
+        self.logger.info("Fetching events for all namespaces")
         data = self.v1.list_event_for_all_namespaces().items
-        parsed_events = []
         for event in data:
-            parsed_events.append({
+            yield {
                 "TimeGenerated": self.format_timestamp(event.metadata.creation_timestamp),
                 "first_timestamp": self.format_timestamp(event.first_timestamp),
                 "last_timestamp": self.format_timestamp(event.last_timestamp) if event.last_timestamp else "",
@@ -111,69 +113,65 @@ class KubeLogFetcher:
                 "involved_object_uid": event.involved_object.uid,
                 "involved_object_name": event.involved_object.name,
                 "reporting_component": event.reporting_instance
-            })
-        return parsed_events
+            }
     
-    def retrieve_history_from_pod(self, pod, collected_entries):
+    def retrieve_command_history(self):
+        
         HISTORY_PATHS = [
         "/root/.ash_history",
         "/root/.bash_history"
         ]
+        self.logger.info("Retrieving command history")
+        for pod in self.get_pods_stream():
 
-        with tempfile.TemporaryDirectory() as temp_dir:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                for container in pod.spec.containers:
+                    for history_path in HISTORY_PATHS:
+                        dest_file = os.path.join(temp_dir, f"{container.name}_{os.path.basename(history_path)}")
+                        self.logger.info(f"Attempting to copy {history_path} from {pod.metadata.name}/{container.name}")
+                        
+                        try:
+                            subprocess.run([
+                                "kubectl", "cp",
+                                f"{pod.metadata.namespace}/{pod.metadata.name}:{history_path}",
+                                dest_file,
+                                "-c", container.name
+                            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            for container in pod.spec.containers:
-                for history_path in HISTORY_PATHS:
-                    dest_file = os.path.join(temp_dir, f"{container.name}_{os.path.basename(history_path)}")
-                    print(f"Attempting to copy {history_path} from {pod.metadata.name}/{container.name}")
-                    
-                    try:
-                        subprocess.run([
-                            "kubectl", "cp",
-                            f"{pod.metadata.namespace}/{pod.metadata.name}:{history_path}",
-                            dest_file,
-                            "-c", container.name
-                        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                            with open(dest_file, "r", encoding="utf-8", errors="ignore") as f:
+                                for line in f:
+                                    line = line.strip()
+                                    if line:
+                                        yield {
+                                            "TimeGenerated": datetime.utcnow().isoformat(),
+                                            "namespace": pod.metadata.namespace,
+                                            "pod_name": pod.metadata.name,
+                                            "container_name": container.name,
+                                            "command": line
+                                        }
 
-                        with open(dest_file, "r", encoding="utf-8", errors="ignore") as f:
-                            for line in f:
-                                line = line.strip()
-                                if line:
-                                    collected_entries.append({
-                                        "TimeGenerated": datetime.utcnow().isoformat(),
-                                        "namespace": pod.metadata.namespace,
-                                        "pod_name": pod.metadata.name,
-                                        "container_name": container.name,
-                                        "command": line
-                                    })
-
-                    except subprocess.CalledProcessError:
-                        print(f"Failed to copy {history_path} from {pod.metadata.name}/{container.name}")
-                    except FileNotFoundError:
-                        continue
-
-            return collected_entries
+                        except subprocess.CalledProcessError:
+                            self.logger.error(f"Failed to copy {history_path} from {pod.metadata.name}/{container.name}")
+                        except FileNotFoundError:
+                            continue
     
     def get_service_accounts(self):
-        print("\nRetrieving service accounts")
-        service_accounts = []
+        self.logger.info("Retrieving service accounts")
         for ns in self.v1.list_namespace().items:
             namespace = ns.metadata.name
             for sa in self.v1.list_namespaced_service_account(namespace).items:
                 creation_timestamp = self.format_timestamp(sa.metadata.creation_timestamp)
-                service_accounts.append({
+                yield {
                     "TimeGenerated": creation_timestamp,
                     "namespace": namespace,
                     "name": sa.metadata.name,
                     "automount_service_account_token": sa.automount_service_account_token,
                     "image_pull_secrets": sa.image_pull_secrets
-                })
-        return service_accounts
+                }
     
     def get_suspicious_pods(self):
-        suspicious_entries = []
-
-        for pod in self.pods:
+        self.logger.info("Retrieving possibly suspicious pods")
+        for pod in self.get_pods_stream():
 
             creation_timestamp = self.format_timestamp(pod.metadata.creation_timestamp)
 
@@ -182,24 +180,24 @@ class KubeLogFetcher:
             spec = pod.spec
 
             if spec.host_network:
-                suspicious_entries.append({
+                yield {
                     "TimeGenerated": creation_timestamp,
                     "pod_name": name,
                     "namespace": ns,
                     "issue_type": "hostNetwork",
                     "details": "hostNetwork=true"
-                })
+                }
 
             for container in spec.containers:
                 security = container.security_context
                 if security and security.privileged:
-                    suspicious_entries.append({
+                    yield {
                         "TimeGenerated": creation_timestamp,
                         "name": name,
                         "namespace": ns,
                         "issue_type": "privileged",
                         "details": f"{container.name}: privileged=true"
-                    })
+                    }
 
             for volume in spec.volumes or []:
                 if volume.host_path:
@@ -208,20 +206,16 @@ class KubeLogFetcher:
                         issue = "hostPath (creation-capable)"
                     else:
                         issue = "hostPath"
-                    suspicious_entries.append({
+                    yield {
                         "TimeGenerated": creation_timestamp,
                         "name": name,
                         "namespace": ns,
                         "issue_type": issue,
                         "details": f"hostPath: {volume.host_path.path}, type: {vol_type}"
-                    })
-
-        return suspicious_entries
+                    }
 
     def get_rbac_bindings(self):
-        flattened_bindings = []
-
-
+        self.logger.info("Retrieving RBAC bindings")
         for binding in self.rbac_v1.list_role_binding_for_all_namespaces().items:
             creation_timestamp = self.format_timestamp(binding.metadata.creation_timestamp)
             binding_name = binding.metadata.name
@@ -230,7 +224,7 @@ class KubeLogFetcher:
             role_ref_name = binding.role_ref.name
 
             for subject in binding.subjects or []:
-                flattened_bindings.append({
+                yield {
                     "TimeGenerated": creation_timestamp,
                     "binding_type": "RoleBinding",
                     "binding_name": binding_name,
@@ -240,7 +234,7 @@ class KubeLogFetcher:
                     "subject_namespace": getattr(subject, "namespace", namespace),
                     "role_ref_kind": role_ref_kind,
                     "role_ref_name": role_ref_name
-                })
+                }
         
         for binding in self.rbac_v1.list_cluster_role_binding().items:
             creation_timestamp = self.format_timestamp(binding.metadata.creation_timestamp)
@@ -250,7 +244,7 @@ class KubeLogFetcher:
             role_ref_name = binding.role_ref.name
 
             for subject in binding.subjects or []:
-                flattened_bindings.append({
+                yield {
                     "TimeGenerated": creation_timestamp,
                     "binding_type": "RoleBinding",
                     "binding_name": binding_name,
@@ -260,13 +254,10 @@ class KubeLogFetcher:
                     "subject_namespace": getattr(subject, "namespace", namespace),
                     "role_ref_kind": role_ref_kind,
                     "role_ref_name": role_ref_name
-                })
-
-        return flattened_bindings
+                }
     
     def get_cronjob_containers_info(self):
-        print("\nExtracting CronJob container info...")
-        container_data = []
+        self.logger.info("Extracting CronJob container info")
         for cj in self.batch_v1.list_cron_job_for_all_namespaces().items:
             creation_timestamp = self.format_timestamp(cj.metadata.creation_timestamp)
             cj_name = cj.metadata.name
@@ -275,7 +266,7 @@ class KubeLogFetcher:
 
             for c in containers:
                 command_str = " ".join(c.command) if c.command else ""
-                container_data.append({
+                yield {
                     "TimeGenerated": creation_timestamp,
                     "cronjob_name": cj_name,
                     "namespace": namespace,
@@ -283,19 +274,14 @@ class KubeLogFetcher:
                     "image": c.image,
                     "command": command_str,
                     "schedule": cj.spec.schedule
-                })
-
-        return container_data
-    
+                }
 
     def get_network_policies(self):
-        print("\nRetrieving Network Policies:")
-        network_policies = []
+        self.logger.info("Retrieving Network Policies")
         for np in self.networking_v1.list_network_policy_for_all_namespaces().items:
             creation_timestamp = self.format_timestamp(np.metadata.creation_timestamp)
-            network_policies.append({
+            yield {
                 "TimeGenerated": creation_timestamp,
                 "namespace": np.metadata.namespace,
                 "name": np.metadata.name
-            })
-        return network_policies
+            }
